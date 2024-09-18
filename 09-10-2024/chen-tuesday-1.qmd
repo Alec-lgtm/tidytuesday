@@ -10,22 +10,9 @@ editor:
     wrap: 72
 ---
 
-#### Preface
-
-For my first TidyTuesday in two years! (can't believe it's been that long), I have to bring myself back to the COMP 112 days and the [Claus Wilke's fundamentals](https://clauswilke.com/dataviz/)
-
-I must try to implement some of these ideas that he posits
-
-- *Providing Context*: Balance the data and the context
-- *Proportional Ink*: The sizes of shaded areas in a visualization need to be proportional to the data values they represent.
-- *Redundant encoding*: If there is a clear visual ordering in your data, make sure to match it in the legend. 
-- *Avoiding 3D or line drawings*: Just don't.
-
-Also, trying some fun techniques for handling overlapping data like: Partial transparency and jittering, 2D histograms, and contour lines.
-
 ## Research Question
 
-I mean, generally we know that students that come from higher economic statuses have more resources, are admitted at much higher rate, and generally do better in life.
+Generally we know that students that come from higher economic statuses have more resources, are admitted at much higher rate, and generally do better in life.
 
 But is there an instance where money is detrimental to career and life success? Thus my inital research question was: 
 
@@ -47,6 +34,7 @@ college_admissions <- readr::read_csv('https://raw.githubusercontent.com/rfordat
 dim(college_admissions)
 head(college_admissions)
 ```
+
 #### Preliminary Visualizations
 
 Single Variable visualizations: It looks like much of the data cleaning work has already been done for me. The hard part is understanding the data dictionary
@@ -105,7 +93,7 @@ other_elite_schools <- college_admissions %>%
   count(name)
 ```
 
-Given Grinnell's list of near peer colleges, I list some near peer colleges for Macalester that I will use in this visualization
+Given Grinnell's [list](https://www.grinnell.edu/about/leadership/offices-services/institutional-research/peer-schools) of near peer colleges, I list some near peer colleges for Macalester that I will use in this visualization
 
 1. Amherst College
 2. Bowdoin College
@@ -124,10 +112,7 @@ I chose these colleges because they all are rigorous academically and small libe
 #### Full Visualization
 
 ```{r}
-#full_plot <- 
-  
-  
-college_admissions %>%
+full_plot <- college_admissions %>%
   filter(name %in% c("Amherst College", "Bowdoin College", "Carleton College", "Davidson College", "Kenyon College", "Macalester College", "Oberlin College", "Pomona College", "Reed College", "Swarthmore College", "Vassar College", "Williams College")) %>% 
   mutate(name = as.factor(name)) %>%  # Ensure name is a factor
   mutate(name = fct_reorder(name, rel_attend, .fun = mean, .desc = TRUE)) %>%
@@ -167,4 +152,5 @@ Save Plot
 ggsave("chen_economic_diversity_colleges_tidy_tuesday_1.png", plot = full_plot, width = 12, height = 6, dpi = 300)
 ```
 
+![
 
