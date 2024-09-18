@@ -10,15 +10,11 @@ editor:
     wrap: 72
 ---
 
+#### Preface
+
+This dataset goes over college admittance rates based on their economic income level and their test scores. We will be investigating the amount of economic diversity there is on small liberal arts campuses, specifically Macalester College. 
+
 ## Research Question
-
-Generally we know that students that come from higher economic statuses have more resources, are admitted at much higher rate, and generally do better in life.
-
-But is there an instance where money is detrimental to career and life success? Thus my inital research question was: 
-
-> Where and why do higher income students fail in college admissions?
-
-After close inspection of the data, I don't think I can visualize this research question. The data looks at college attendance which is very clearly tied to higher income [study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10089351/). Since Macalester College is in this dataset, I will change my research question:  
 
 > How does Macalester College compare to other universities in terms of college attendance across economic brackets?
 
@@ -37,14 +33,13 @@ head(college_admissions)
 
 #### Preliminary Visualizations
 
-Single Variable visualizations: It looks like much of the data cleaning work has already been done for me. The hard part is understanding the data dictionary
+Single Variable visualizations: 
 
 ```{r, collapse=TRUE}
-# This shouldn't happen
 ggplot(college_admissions) + 
   geom_bar(aes(x = par_income_lab))
 
-# Odd that they put the same number of people in each bracket, probably for visualization's sake
+# Odd that they put the same number of people in each bracket
 table(college_admissions$par_income_lab)
 
 # Of every income bracket, around 0-0.1 actually attend a specific college. Ex: around 1% of students in 0-20 income bracket attend Cornell (weighting all test scores equal)
@@ -82,7 +77,6 @@ ggplot(college_admissions) +
 ggplot(college_admissions) + 
   geom_boxplot(aes(x = par_income_lab, y = rel_attend))
 
-# Macalester ain't doing too bad!
 college_admissions %>%
   filter(name == "Macalester College") %>%
   ggplot() +
@@ -118,7 +112,7 @@ full_plot <- college_admissions %>%
   mutate(name = fct_reorder(name, rel_attend, .fun = mean, .desc = TRUE)) %>%
   ggplot() + 
     geom_tile(aes(x = par_income_lab, y = name, fill = rel_attend)) + 
-    labs(title = "How economically diverse are liberal arts campuses?", subtitle = "Relative Attendances across all Income Brackets", x = "Income Brackets", y = "Liberal Arts Colleges", fill = "Relative Attendance", caption = "Alec Chen | Data from Opportunity Insights") + 
+    labs(title = "How economically diverse are liberal arts campuses?", subtitle = "Relative Attendances across all Income Brackets", x = "Income Brackets", y = "Liberal Arts Colleges", fill = "Relative Attendance", caption = "Alec Chen | Data from Opportunity Insights | Students from 2011, 2013, and 2015") + 
     scale_fill_viridis_c(option = "magma",labels = function(x) paste0(x, "%")) + 
     #scale_fill_distiller(palette = "Spectral") +
     guides(fill = guide_colorbar(title.position = "top", barwidth = 15, barheight = 1)) +  # Moves title to top
@@ -131,17 +125,17 @@ full_plot <- college_admissions %>%
     )) + 
     theme_classic() +
     theme(
-      plot.title = element_text(size = 16, hjust = 0.5),
+      plot.title = element_text(size = 16, hjust = 0.5, face = "bold"),
       plot.subtitle = element_text(size = 10, hjust = 0.5),
       legend.position='top', 
       legend.justification='left',
       legend.direction='horizontal',
       legend.margin = margin(b = -10, l = 5, unit = "pt"),
       # axis.text.x = element_text(size = 11, angle = 45, hjust = 1),  # Adjusts x-axis labels for readability
-      axis.text.x = element_text(size = 11),
-      axis.text.y = element_text(size = 11, hjust = 1),
+      axis.text.x = element_text(size = 11, margin = margin(t = -3)),
+      axis.text.y = element_text(size = 11, hjust = 1, margin = margin(r = -3)),
       axis.title.y = element_blank(),
-      axis.title.x = element_text(size = 12),
+      axis.title.x = element_text(size = 12, margin = margin(t = 5)),
       axis.ticks = element_blank(),
       axis.line = element_blank())
 ```
@@ -152,5 +146,9 @@ Save Plot
 ggsave("chen_economic_diversity_colleges_tidy_tuesday_1.png", plot = full_plot, width = 12, height = 6, dpi = 300)
 ```
 
-![
+![Economic Diversity in Small Liberal Arts Colleges](chen_economic_diversity_colleges_tidy_tuesday_1.png)
+
+## Conclusion
+
+It looks like Swathmore College has the most economic diversity than most other liberal arts colleges in this dataset. Macalester College ranks second in economic diversity after Swathmore College. Davidson and Kenyon Colleges rank last in economic diversity according to this dataset.
 
