@@ -1,9 +1,14 @@
 ---
-title: "tidytuesday2"
-format: html
-editor: visual
+title: "Tidy Tuesday - Perfume Dataset"
+subtitle: "Tuesday Number 2"
+author: "ALEC CHEN"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
 ---
-
 #### Preface
 
 This dataset examines how perfumes are rated, identifies their associated scent families, and highlights the brands and perfumers responsible for creating top fragrances.
@@ -12,7 +17,7 @@ This dataset examines how perfumes are rated, identifies their associated scent 
 
 > Which top fragrance notes are most frequently associated with the leading fragrance brands, and how are these top brands and top notes interconnected?
 
-## Data Wrangling 
+## Data Wrangling
 
 Load Packages
 
@@ -59,10 +64,7 @@ filtered_edges <- brand_note_counts %>%
   filter(Note %in% top_notes & Brand %in% top_brands)
 ```
 
-Set up the graph
-- source node: brand
-- target node: Note
-- edge weight: Frequency
+Set up the graph - source node: brand - target node: Note - edge weight: Frequency
 
 ```{r}
 # Convert to graph with prefixes
@@ -73,7 +75,7 @@ filtered_edges <- filtered_edges %>%
   select(from, to, weight)
 ```
 
-Create distinct brand and note nodes. 
+Create distinct brand and note nodes.
 
 ```{r}
 nodes_brand <- filtered_edges %>%
