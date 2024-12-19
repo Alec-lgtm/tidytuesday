@@ -37,6 +37,22 @@ Load the data
 parfumo_data_clean <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-12-10/parfumo_data_clean.csv')
 ```
 
+Split top notes and create long form
+
+```{r}
+notes_long <- parfumo_data_clean %>%
+  mutate(Top_Notes_List = strsplit(Top_Notes, "\\s*,\\s*")) %>% # by comma
+  unnest(Top_Notes_List) %>%
+  rename(Note = Top_Notes_List)
+```
+Count frequencies of brand note combination
+
+```{r}
+brand_note_counts <- notes_long %>%
+  group_by(Brand, Note) %>%
+  summarise(Freq = n(), .groups = "drop")
+```
+
 Identify top notes and brands. (note mean scent in this context)
 
 ```{r}
@@ -102,7 +118,7 @@ g <- graph_from_data_frame(d = filtered_edges, vertices = nodes, directed = FALS
 Visualize the graph
 
 ```{r}
-p <- ggraph(g, layout = "fr") + # force-directed graph 
+brand_note_network <- ggraph(g, layout = "fr") + # force-directed graph 
   geom_edge_link(aes(width = weight, color = weight), alpha = 0.4) + # Draws edges
   geom_node_point(aes(color = type), size = 4) + # Draws nodes
   geom_node_text(aes(label = name), repel = TRUE, size = 3) + # Adds labels
@@ -117,9 +133,9 @@ p <- ggraph(g, layout = "fr") + # force-directed graph
        edge_color = "Frequency",
        edge_width = "Frequency")
 
-ggsave("Brand_Top_Note_network.png", plot = p, bg = white, width = 12, height = 6, dpi = 300)
+ggsave("Brand_Top_Note_network.png", plot = brand_note_network, bg = 'white', width = 12, height = 6, dpi = 300)
 
-print(p)
+brand_note_network
 ```
 
 > Analysis: The dense cluster of edges shows that the top brands share many top notes in common. This could reflect which industry trend about which top notes are popular or trendy. The top notes that are closer to the center like Bergamo are likely "universal favorites" that are popular regardless of the time.

@@ -1,6 +1,6 @@
 ---
 title: "Tidy Tuesday - U.S. Customs and Border Protection Encounters Dataset"
-subtitle: "Tuesday Number 2"
+subtitle: "Tuesday Number 3"
 author: "ALEC CHEN"
 format: 
   html:
@@ -23,6 +23,7 @@ This dataset tracks how many people CBP encountered trying to enter the U.S. thr
 library(tidyverse)
 library(lubridate)
 library(plotly)
+library(htmlwidgets)
 
 cbp_resp <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-11-26/cbp_resp.csv')
 cbp_state <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-11-26/cbp_state.csv')
@@ -58,6 +59,7 @@ monthly_data <- cbp_resp_dates %>%
   ) %>%
   ungroup()
 
+# Create tooltip text
 monthly_data <- monthly_data %>%
   mutate(hover_text = paste0(
     "Date: ", format(year_month_date, "%Y-%m"), "<br>",
@@ -72,36 +74,160 @@ policy_milestones <- tibble(
 )
 ```
 
+
+## Data Visualization 
+
+**Static Plot of encounters**
+
 ```{r}
-ggplot(monthly_data, aes(x = year_month_date, y = encounters, color = title_of_authority)) +
-  geom_line(size = 1) +
-  geom_vline(data = policy_milestones, 
-             aes(xintercept = date),
-             color = "red", 
-             linetype = "dashed") +
-  # Improved text annotations with better positioning and formatting
+# First calculate max y value
+max_y <- max(monthly_data$encounters)
+
+# Generate base plot
+base_encounters_plot <- ggplot(monthly_data, aes(x = year_month_date, 
+                             y = encounters, 
+                             group = title_of_authority,
+                             text = hover_text)) +
+  geom_line(aes(color = title_of_authority), size = 1) +
+  scale_x_date(date_breaks = "6 months", date_labels = "%Y-%m") +
+  # Reset inherited aesthetics with inherit.aes = FALSE
   geom_text(
     data = policy_milestones,
-    aes(x = date, 
-        y = max(monthly_data$encounters),  # Position at top of plot
-        label = event),
-    color = "red", 
-    hjust = -0.1,  # Adjust horizontal position
-    vjust = 0.5,   # Center vertically
-    size = 3.5,    # Slightly larger text
-    angle = 0      # Horizontal text instead of vertical
+    mapping = aes(x = date,
+                 y = max_y),
+    inherit.aes = FALSE,  # This is the key addition
+    label = policy_milestones$event,
+    color = "red",
+    hjust = -0.1,
+    vjust = 0.5,
+    size = 3.5,
+    angle = 0
   ) +
+  geom_vline(data = policy_milestones,
+             aes(xintercept = date),
+             color = "red",
+             linetype = "dashed") + 
   labs(
     title = "Title 8 & Title 42 Encounters Over Time",
     x = "Date",
     y = "Number of Encounters",
     color = "Authority"
   ) +
-  # Format y-axis to use comma notation instead of scientific
+  scale_color_manual(
+    values = c("Title 42" = "#FF9999", "Title 8" = "#66C2E5")
+  ) +
   scale_y_continuous(labels = scales::comma_format()) +
-  theme_minimal() +
+  theme_classic() +
   theme(
     plot.title = element_text(face = "bold", size = 14),
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+
+ggsave("CBP_encounters.png", plot = base_encounters_plot, bg = 'white', width = 12, height = 6, dpi = 300)
+
+base_encounters_plot
+```
+
+**Interactive plot of encounters**
+
+```{r}
+# Create the plot directly with plotly for both lines
+interactive_encounters_plot <- plot_ly() %>%
+  add_trace(data = monthly_data[monthly_data$title_of_authority == "Title 8", ],
+            x = ~year_month_date, 
+            y = ~encounters,
+            name = "Title 8",
+            type = 'scatter',
+            mode = 'lines',
+            line = list(color = "#66C2E5", width = 2)) %>%
+  add_trace(data = monthly_data[monthly_data$title_of_authority == "Title 42", ],
+            x = ~year_month_date,
+            y = ~encounters,
+            name = "Title 42",
+            type = 'scatter',
+            mode = 'lines',
+            line = list(color = "#FF9999", width = 2)) %>%
+  layout(
+    title = "Title 8 & Title 42 Encounters Over Time",
+    xaxis = list(title = "Date"),
+    yaxis = list(title = "Number of Encounters"),
+    shapes = list(
+      # Title 42 Implementation line
+      list(
+        type = "line",
+        x0 = "2020-03-21",
+        x1 = "2020-03-21",
+        y0 = 0,
+        y1 = max(monthly_data$encounters),
+        line = list(color = "red", width = 2, dash = "dash")
+      ),
+      # Title 42 End line
+      list(
+        type = "line",
+        x0 = "2023-05-11",
+        x1 = "2023-05-11",
+        y0 = 0,
+        y1 = max(monthly_data$encounters),
+        line = list(color = "red", width = 2, dash = "dash")
+      )
+    ),
+    annotations = list(
+      # Title 42 Implementation text
+      list(
+        x = "2020-03-21",
+        y = max(monthly_data$encounters),
+        text = "Title 42 Implemented",
+        showarrow = FALSE,
+        xanchor = "left",
+        yanchor = "bottom",
+        font = list(color = "red")
+      ),
+      # Title 42 End text
+      list(
+        x = "2023-05-11",
+        y = max(monthly_data$encounters),
+        text = "Title 42 End",
+        showarrow = FALSE,
+        xanchor = "left",
+        yanchor = "bottom",
+        font = list(color = "red")
+      )
+    ),
+    hovermode = "x unified"
+  )
+
+htmlwidgets::saveWidget(interactive_encounters_plot , "CBP_interactive_encounters_plot.html")
+```
+
+
+#### Exmaple plot
+
+Red line in plotly
+
+```{r}
+library(plotly)
+
+# Example dataframe
+df <- data.frame(
+  date = seq(as.Date("2020-01-01"), as.Date("2024-01-01"), by = "month"),
+  value = runif(49, 100, 300)
+)
+
+# Figuring out how to put red lines onto the plot
+plot_ly(df, x = ~date, y = ~value, type = 'scatter', mode = 'lines') %>%
+  layout(
+    shapes = list(
+      list(
+        type = "line",
+        x0 = "2022-01-01",
+        x1 = "2022-01-01",
+        y0 = 100,
+        y1 = 300,
+        line = list(color = "red", width = 2, dash = "dash")
+      )
+    )
   )
 ```
+
+
