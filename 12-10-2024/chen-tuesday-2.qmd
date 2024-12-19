@@ -1,0 +1,123 @@
+---
+title: "tidytuesday2"
+format: html
+editor: visual
+---
+
+#### Preface
+
+This dataset examines how perfumes are rated, identifies their associated scent families, and highlights the brands and perfumers responsible for creating top fragrances.
+
+## Research Question
+
+> Which top fragrance notes are most frequently associated with the leading fragrance brands, and how are these top brands and top notes interconnected?
+
+## Data Wrangling 
+
+Load Packages
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(igraph)
+library(ggraph)
+library(ggplot2)
+library(tidyverse)
+```
+
+Load the data
+
+```{r}
+parfumo_data_clean <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-12-10/parfumo_data_clean.csv')
+```
+
+Identify top notes and brands. (note mean scent in this context)
+
+```{r}
+# Converts top notes into a character vector
+top_notes <- brand_note_counts %>%
+  filter(Note != "note_NA") %>%
+  group_by(Note) %>%
+  summarise(total_freq = sum(Freq)) %>% #select the top 20 notes by total frequency
+  top_n(20, total_freq) %>%
+  pull(Note)
+
+# Converts top brands into a character vector
+top_brands <- brand_note_counts %>%
+  filter(Note != "brand_NA") %>%
+  group_by(Brand) %>%
+  summarise(total_freq = sum(Freq)) %>%
+  top_n(20, total_freq) %>%
+  pull(Brand)
+```
+
+Get entries with top 20 brands and top 20 notes
+
+```{r}
+filtered_edges <- brand_note_counts %>%
+  filter(Note %in% top_notes & Brand %in% top_brands)
+```
+
+Set up the graph
+- source node: brand
+- target node: Note
+- edge weight: Frequency
+
+```{r}
+# Convert to graph with prefixes
+filtered_edges <- filtered_edges %>%
+  mutate(from = paste0("brand_", Brand),
+         to = paste0("note_", Note),
+         weight = Freq) %>%
+  select(from, to, weight)
+```
+
+Create distinct brand and note nodes. 
+
+```{r}
+nodes_brand <- filtered_edges %>%
+  distinct(from) %>%
+  rename(name = from) %>%
+  mutate(type = TRUE)  # TRUE = Brand
+
+nodes_note <- filtered_edges %>%
+  distinct(to) %>%
+  rename(name = to) %>%
+  mutate(type = FALSE) # FALSE = Note
+
+nodes <- bind_rows(nodes_brand, nodes_note)
+```
+
+Create a graph from filtered_edges
+
+```{r}
+g <- graph_from_data_frame(d = filtered_edges, vertices = nodes, directed = FALSE)
+```
+
+## Visualization
+
+Visualize the graph
+
+```{r}
+p <- ggraph(g, layout = "fr") + # force-directed graph 
+  geom_edge_link(aes(width = weight, color = weight), alpha = 0.4) + # Draws edges
+  geom_node_point(aes(color = type), size = 4) + # Draws nodes
+  geom_node_text(aes(label = name), repel = TRUE, size = 3) + # Adds labels
+  scale_color_manual(values = c("TRUE" = "darkred", "FALSE" = "darkgreen"),
+                     labels = c("Brand", "Note")) + # Set colors
+  scale_edge_width(range = c(0.5, 2)) +
+  scale_edge_color_gradient(low = "skyblue", high = "darkblue") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(title = "Brand vs. Top Notes Network (Top 20)",
+       caption = "Data From Parfumo",
+       edge_color = "Frequency",
+       edge_width = "Frequency")
+
+ggsave("Brand_Top_Note_network.png", plot = p, bg = white, width = 12, height = 6, dpi = 300)
+
+print(p)
+```
+
+> Analysis: The dense cluster of edges shows that the top brands share many top notes in common. This could reflect which industry trend about which top notes are popular or trendy. The top notes that are closer to the center like Bergamo are likely "universal favorites" that are popular regardless of the time.
