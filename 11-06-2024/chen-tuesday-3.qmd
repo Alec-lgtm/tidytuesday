@@ -1,0 +1,107 @@
+---
+title: "Tidy Tuesday - U.S. Customs and Border Protection Encounters Dataset"
+subtitle: "Tuesday Number 2"
+author: "ALEC CHEN"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+#### Preface
+
+This dataset tracks how many people CBP encountered trying to enter the U.S. through different borders and methods, capturing both Title 8 (standard immigration law) and Title 42 (COVID-era health policy) cases from 2020 onwards to help understand migration patterns and enforcement changes.
+
+## Research Question
+
+> Which top fragrance notes are most frequently associated with the leading fragrance brands, and how are these top brands and top notes interconnected?
+
+## Data Wrangling
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(plotly)
+
+cbp_resp <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-11-26/cbp_resp.csv')
+cbp_state <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-11-26/cbp_state.csv')
+
+month_map <- c(
+  JAN = 1, FEB = 2, MAR = 3, APR = 4, MAY = 5, JUN = 6,
+  JUL = 7, AUG = 8, SEP = 9, OCT = 10, NOV = 11, DEC = 12
+)
+
+# Convert fiscal_year and month_abbv into a date.
+# Treat fiscal_year as if it matches the calendar year.
+cbp_resp_dates <- cbp_resp %>%
+  mutate(
+    month_num = month_map[month_abbv],
+    year_month_date = make_date(year = fiscal_year, month = month_num, day = 1)
+  ) %>%
+  # Keep only Title 8 and Title 42 data
+  filter(title_of_authority %in% c("Title 8", "Title 42"))
+```
+
+Conglomerating data
+
+```{r}
+# Aggregate data by month and title_of_authority
+monthly_data <- cbp_resp_dates %>%
+  group_by(title_of_authority, year_month_date) %>%
+  summarise(encounters = sum(encounter_count), .groups = "drop") %>%
+  arrange(title_of_authority, year_month_date) %>%
+  group_by(title_of_authority) %>%
+  mutate(
+    lag_encounters = lag(encounters),
+    pct_change = (encounters - lag_encounters) / lag_encounters * 100
+  ) %>%
+  ungroup()
+
+monthly_data <- monthly_data %>%
+  mutate(hover_text = paste0(
+    "Date: ", format(year_month_date, "%Y-%m"), "<br>",
+    "Encounters: ", encounters, "<br>",
+    "MoM Change: ", ifelse(is.na(pct_change), "N/A", paste0(round(pct_change, 1), "%"))
+  ))
+
+# Draw Milestones lines
+policy_milestones <- tibble(
+  event = c("Title 42 Implemented", "Title 42 End"),
+  date = as.Date(c("2020-03-21", "2023-05-11"))
+)
+```
+
+```{r}
+ggplot(monthly_data, aes(x = year_month_date, y = encounters, color = title_of_authority)) +
+  geom_line(size = 1) +
+  geom_vline(data = policy_milestones, 
+             aes(xintercept = date),
+             color = "red", 
+             linetype = "dashed") +
+  # Improved text annotations with better positioning and formatting
+  geom_text(
+    data = policy_milestones,
+    aes(x = date, 
+        y = max(monthly_data$encounters),  # Position at top of plot
+        label = event),
+    color = "red", 
+    hjust = -0.1,  # Adjust horizontal position
+    vjust = 0.5,   # Center vertically
+    size = 3.5,    # Slightly larger text
+    angle = 0      # Horizontal text instead of vertical
+  ) +
+  labs(
+    title = "Title 8 & Title 42 Encounters Over Time",
+    x = "Date",
+    y = "Number of Encounters",
+    color = "Authority"
+  ) +
+  # Format y-axis to use comma notation instead of scientific
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
